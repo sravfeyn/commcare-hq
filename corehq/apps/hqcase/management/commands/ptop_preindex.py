@@ -1,9 +1,7 @@
 from datetime import datetime
 from django.core.mail import mail_admins
-import sys
 from gevent import monkey;monkey.patch_all()
 import gevent
-from gevent import Greenlet
 from pillowtop.listener import AliasedElasticPillow
 from pillowtop.management.pillowstate import get_pillow_states
 from pillowtop.run_pillowtop import import_pillows
