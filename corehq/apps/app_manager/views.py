@@ -57,6 +57,7 @@ from corehq.apps.domain.decorators import login_and_domain_required, login_or_di
 from corehq.apps.app_manager.models import Application, get_app, DetailColumn, Form, FormActions,\
     AppError, load_case_reserved_words, ApplicationBase, DeleteFormRecord, DeleteModuleRecord, DeleteApplicationRecord, EXAMPLE_DOMAIN, str_to_cls, validate_lang, SavedAppBuild
 from corehq.apps.app_manager.models import DETAIL_TYPES, import_app as import_app_util
+from corehq.apps.sms.views import get_sms_autocomplete_context
 from dimagi.utils.web import get_url_base
 from corehq.apps.app_manager.decorators import safe_download
 
@@ -561,6 +562,7 @@ def release_manager(request, domain, app_id, template='app_manager/releases.html
     app = get_app(domain, app_id)
     latest_release = get_app(domain, app_id, latest=True)
     context = get_apps_base_context(request, domain, app)
+    context['sms_contacts'] = get_sms_autocomplete_context(request, domain)["sms_contacts"]
 
     saved_apps = []
 

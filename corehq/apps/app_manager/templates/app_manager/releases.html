@@ -35,6 +35,11 @@
         var el = $('#releases-table');
         ko.applyBindings(new ReleasesMain(o), el.get(0));
         el.show();
+
+        $('.tabbable').find("input[name]='recipients'").multiTypeahead({
+            source: {{ sms_contacts|JSON }},
+        }).focus();
+        
         {# This currently doesn't work because of a bootstrap update, #}
         {# but no one's asked for it back so it doesn't seem urgent. #}
         {% comment %}
