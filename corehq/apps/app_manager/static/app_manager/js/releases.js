@@ -143,6 +143,8 @@ function ReleasesMain(o) {
                 self.buildState('error');
             });
     };
+    self.group_deploy = function(elem) { alert(elem);
+    };
     // init
     setTimeout(function () {
         self.getMoreSavedApps();

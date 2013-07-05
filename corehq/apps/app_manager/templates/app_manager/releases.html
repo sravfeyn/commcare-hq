@@ -185,7 +185,7 @@
                     </td>
                     <td class="nowrap">
                         <div class="btn-group">
-                            <a class="btn btn-primary" data-bind="openModal: 'deploy-build-modal-template'">Deploy</a>
+                            <a class="btn btn-primary" data-bind="openModal: 'deploy-build-modal-template', click: $root.group_deploy.bind($data, 'JSON_TO_PASS')">Deploy</a>
                         </div>
                     </td>
                     {% if edit %}
