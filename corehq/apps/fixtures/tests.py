@@ -1,7 +1,7 @@
 from xml.etree import ElementTree
 from casexml.apps.case.tests.util import check_xml_line_by_line
 from corehq.apps.fixtures import fixturegenerators
-from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType, FixtureOwnership, FixtureField
+from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType, FixtureOwnership, FixtureFieldType
 from corehq.apps.users.models import CommCareUser
 from django.test import TestCase
 

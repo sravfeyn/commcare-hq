@@ -5,13 +5,15 @@ from corehq.apps.groups.models import Group
 from dimagi.utils.couch.bulk import CouchTransaction
 from dimagi.utils.couch.database import get_db
 
+import warnings
+
 
 class FixtureTypeCheckError(Exception):
     pass
 
-class FixtureField(DocumentSchema):
+class FixtureFieldType(DocumentSchema):
     field_name = StringProperty()
-    properties = DictProperty()
+    properties = StringListProperty()
 
 class FixtureDataType(Document):
     domain = StringProperty()
@@ -19,20 +21,21 @@ class FixtureDataType(Document):
     tag = StringProperty()
     name = StringProperty()
     # fields = StringListProperty()
-    fields = SchemaListProperty(FixtureField)
+    fields = SchemaListProperty(FixtureFieldType)
 
     @classmethod
     def wrap(cls, obj):
         # couldn't find a better way to find if fields is SchemaListProperty
         # import pdb; pdb.set_trace()
         if obj["fields"] and isinstance(obj['fields'][0], str):
-            obj['fields'] = [{'field_name': f, 'properties': {}} for f in obj['fields']]
+            obj['fields'] = [{'field_name': f, 'properties': []} for f in obj['fields']]
             print "old fields, do something here"
         return super(FixtureDataType, cls).wrap(obj)
     
     # support for old fields
     @property
     def old_fields(self):
+        warnings.warn("old_fields should only be used to migrate old code")
         old_fields = []
         for fixt_field in self.fields:
             old_fields.append(fixt_field.field_name)
@@ -54,11 +57,33 @@ class FixtureDataType(Document):
         transaction.delete_all(FixtureOwnership.for_all_item_ids(item_ids, self.domain))
         transaction.delete(self)
 
+
+class FixtureFieldItem(DocumentSchema):
+    field_name = StringProperty()
+    field_value = StringProperty()
+    properties = DictProperty()
+
 class FixtureDataItem(Document):
     domain = StringProperty()
     data_type_id = StringProperty()
-    fields = DictProperty()
+    # fields = DictProperty()
+    fields = SchemaListProperty(FixtureFieldItem)
     sort_key = IntegerProperty()
+
+    @classmethod
+    def wrap(cls, obj):
+        if obj["fields"] and isinstance(obj['fields'], dict):
+            obj['fields'] = [{'field_name': f, 'field_value': obj['fields'][f], 'properties': {}} for f in obj['fields']]
+            print "old fields, do something here"
+        return super(FixtureDataItem, cls).wrap(obj)        
+
+    @property
+    def old_fields(self):
+        warnings.warn("old_fields should only be used to migrate old code")
+        fields = {}
+        for field in self.fields:
+            fields[field['field_name']] = field['field_value']
+        return fields
 
     @property
     def data_type(self):
