@@ -1,7 +1,7 @@
 from xml.etree import ElementTree
 from casexml.apps.case.tests.util import check_xml_line_by_line
 from corehq.apps.fixtures import fixturegenerators
-from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType, FixtureOwnership
+from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType, FixtureOwnership, FixtureField
 from corehq.apps.users.models import CommCareUser
 from django.test import TestCase
 
@@ -15,7 +15,7 @@ class FixtureDataTest(TestCase):
             domain=self.domain,
             tag=self.tag,
             name="Contact",
-            fields=['name', 'number']
+            fields=[FixtureField(field_name=name) for name in ['name', 'number']]
         )
         self.data_type.save()
 
@@ -91,5 +91,6 @@ class FixtureDataTest(TestCase):
     def test_get_indexed_items(self):
         fixtures = FixtureDataItem.get_indexed_items(self.domain,
             self.tag, 'name')
+        import bpdb; bpdb.set_trace()
         john_num = fixtures['John']['number']
         self.assertEqual(john_num, '+15555555555')

@@ -1,19 +1,42 @@
 from xml.etree import ElementTree
 from corehq.apps.users.models import CommCareUser
-from couchdbkit.ext.django.schema import Document, DictProperty, StringProperty, StringListProperty, IntegerProperty, BooleanProperty
+from couchdbkit.ext.django.schema import Document, DocumentSchema, SchemaListProperty, DictProperty, StringProperty, StringListProperty, IntegerProperty, BooleanProperty
 from corehq.apps.groups.models import Group
 from dimagi.utils.couch.bulk import CouchTransaction
 from dimagi.utils.couch.database import get_db
 
+
 class FixtureTypeCheckError(Exception):
     pass
+
+class FixtureField(DocumentSchema):
+    field_name = StringProperty()
+    properties = DictProperty()
 
 class FixtureDataType(Document):
     domain = StringProperty()
     is_global = BooleanProperty(default=False)
     tag = StringProperty()
     name = StringProperty()
-    fields = StringListProperty()
+    # fields = StringListProperty()
+    fields = SchemaListProperty(FixtureField)
+
+    @classmethod
+    def wrap(cls, obj):
+        # couldn't find a better way to find if fields is SchemaListProperty
+        # import pdb; pdb.set_trace()
+        if obj["fields"] and isinstance(obj['fields'][0], str):
+            obj['fields'] = [{'field_name': f, 'properties': {}} for f in obj['fields']]
+            print "old fields, do something here"
+        return super(FixtureDataType, cls).wrap(obj)
+    
+    # support for old fields
+    @property
+    def old_fields(self):
+        old_fields = []
+        for fixt_field in self.fields:
+            old_fields.append(fixt_field.field_name)
+        return old_fields
 
     @classmethod
     def by_domain(cls, domain):
@@ -40,6 +63,7 @@ class FixtureDataItem(Document):
     @property
     def data_type(self):
         if not hasattr(self, '_data_type'):
+            # import pdb; pdb.set_trace()
             self._data_type = FixtureDataType.get(self.data_type_id)
         return self._data_type
 
@@ -82,7 +106,7 @@ class FixtureDataItem(Document):
 
     def to_xml(self):
         xData = ElementTree.Element(self.data_type.tag)
-        for field in self.data_type.fields:
+        for field in self.data_type.old_fields:
             xField = ElementTree.SubElement(xData, field)
             xField.text = unicode(self.fields[field]) if self.fields.has_key(field) else ""
         return xData
