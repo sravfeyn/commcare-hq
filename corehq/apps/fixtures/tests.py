@@ -1,7 +1,7 @@
 from xml.etree import ElementTree
 from casexml.apps.case.tests.util import check_xml_line_by_line
 from corehq.apps.fixtures import fixturegenerators
-from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType, FixtureOwnership, FixtureFieldType
+from corehq.apps.fixtures.models import FixtureDataItem, FixtureDataType, FixtureOwnership, FixtureFieldType, FixtureFieldItem
 from corehq.apps.users.models import CommCareUser
 from django.test import TestCase
 
@@ -15,7 +15,7 @@ class FixtureDataTest(TestCase):
             domain=self.domain,
             tag=self.tag,
             name="Contact",
-            fields=[FixtureField(field_name=name) for name in ['name', 'number']]
+            fields=[FixtureFieldType(field_name=name, properties=["lang"]) for name in ['name', 'number']]
         )
         self.data_type.save()
 
@@ -23,8 +23,8 @@ class FixtureDataTest(TestCase):
             domain=self.domain,
             data_type_id=self.data_type.get_id,
             fields={
-                'name': 'John',
-                'number': '+15555555555'
+                'name': FixtureFieldItem(field_value='John', properties={"lang": "eng"}),
+                'number': FixtureFieldItem(field_value='+15555555555', properties={"lang": "num"})
             }
         )
         self.data_item.save()
@@ -35,8 +35,8 @@ class FixtureDataTest(TestCase):
                 domain=self.domain,
                 data_type_id=self.data_type.get_id,
                 fields={
-                    'name': name,
-                    'number': number,
+                    'name': FixtureFieldItem(field_value=name, properties={"lang": "eng"}),
+                    'number': FixtureFieldItem(field_value=number, properties={"lang": "num"}),
                 }
             )
             data_item.save()
@@ -60,8 +60,8 @@ class FixtureDataTest(TestCase):
     def test_xml(self):
         check_xml_line_by_line(self, """
         <contact>
-            <name>John</name>
-            <number>+15555555555</number>
+            <name lang="eng">John</name>
+            <number lang="num">+15555555555</number>
         </contact>
         """, ElementTree.tostring(self.data_item.to_xml()))
 
@@ -75,8 +75,8 @@ class FixtureDataTest(TestCase):
         <fixture id="item-list:contact" user_id="%s">
             <contact_list>
                 <contact>
-                    <name>John</name>
-                    <number>+15555555555</number>
+                    <name lang="eng">John</name>
+                    <number lang="num">+15555555555</number>
                 </contact>
             </contact_list>
         </fixture>
@@ -91,6 +91,6 @@ class FixtureDataTest(TestCase):
     def test_get_indexed_items(self):
         fixtures = FixtureDataItem.get_indexed_items(self.domain,
             self.tag, 'name')
-        import bpdb; bpdb.set_trace()
-        john_num = fixtures['John']['number']
+        # import bpdb; bpdb.set_trace()
+        john_num = fixtures['John']['number'].field_value
         self.assertEqual(john_num, '+15555555555')

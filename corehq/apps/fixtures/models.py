@@ -1,6 +1,6 @@
 from xml.etree import ElementTree
 from corehq.apps.users.models import CommCareUser
-from couchdbkit.ext.django.schema import Document, DocumentSchema, SchemaListProperty, DictProperty, StringProperty, StringListProperty, IntegerProperty, BooleanProperty
+from couchdbkit.ext.django.schema import Document, DocumentSchema, SchemaListProperty, SchemaDictProperty, DictProperty, StringProperty, StringListProperty, IntegerProperty, BooleanProperty
 from corehq.apps.groups.models import Group
 from dimagi.utils.couch.bulk import CouchTransaction
 from dimagi.utils.couch.database import get_db
@@ -28,8 +28,8 @@ class FixtureDataType(Document):
         # couldn't find a better way to find if fields is SchemaListProperty
         # import pdb; pdb.set_trace()
         if obj["fields"] and isinstance(obj['fields'][0], str):
-            obj['fields'] = [{'field_name': f, 'properties': []} for f in obj['fields']]
             print "old fields, do something here"
+            obj['fields'] = [{'field_name': f, 'properties': []} for f in obj['fields']]
         return super(FixtureDataType, cls).wrap(obj)
     
     # support for old fields
@@ -59,7 +59,6 @@ class FixtureDataType(Document):
 
 
 class FixtureFieldItem(DocumentSchema):
-    field_name = StringProperty()
     field_value = StringProperty()
     properties = DictProperty()
 
@@ -67,22 +66,32 @@ class FixtureDataItem(Document):
     domain = StringProperty()
     data_type_id = StringProperty()
     # fields = DictProperty()
-    fields = SchemaListProperty(FixtureFieldItem)
+    fields = SchemaDictProperty(FixtureFieldItem)
     sort_key = IntegerProperty()
 
     @classmethod
     def wrap(cls, obj):
-        if obj["fields"] and isinstance(obj['fields'], dict):
-            obj['fields'] = [{'field_name': f, 'field_value': obj['fields'][f], 'properties': {}} for f in obj['fields']]
-            print "old fields, do something here"
-        return super(FixtureDataItem, cls).wrap(obj)        
+        is_of_new_type = False
+        fields_dict = {}
+        if obj["fields"]:
+            for field in obj['fields']:
+                if type(obj['fields'][field]) != str:
+                    is_of_new_type = True
+                    break
+                fields_dict[field] = {
+                    'field_value': obj['fields'][field],
+                    'properties': {}
+                }
+        if not is_of_new_type:
+            obj['fields'] = fields_dict
+        return super(FixtureDataItem, cls).wrap(obj)      
 
     @property
     def old_fields(self):
         warnings.warn("old_fields should only be used to migrate old code")
         fields = {}
         for field in self.fields:
-            fields[field['field_name']] = field['field_value']
+            fields[field] = self.fields[field].field_value
         return fields
 
     @property
@@ -131,9 +140,12 @@ class FixtureDataItem(Document):
 
     def to_xml(self):
         xData = ElementTree.Element(self.data_type.tag)
-        for field in self.data_type.old_fields:
-            xField = ElementTree.SubElement(xData, field)
-            xField.text = unicode(self.fields[field]) if self.fields.has_key(field) else ""
+        for field in self.data_type.fields:
+            xField = ElementTree.SubElement(xData, field.field_name)
+            xField.text = unicode(self.fields[field.field_name].field_value) if self.fields.has_key(field.field_name) else ""
+            # import bpdb; bpdb.set_trace()
+            for property in field.properties:
+                xField.attrib[property] = unicode(self.fields[field.field_name].properties[property]) if self.fields.has_key(field.field_name) else ""
         return xData
 
     def get_groups(self, wrap=True):
@@ -261,7 +273,7 @@ class FixtureDataItem(Document):
             result = fixtures['index_val']['result_field']
         """
         fixtures = cls.get_item_list(domain, tag)
-        return dict((f.fields[index_field], f.fields) for f in fixtures)
+        return dict((f.fields[index_field].field_value, f.fields) for f in fixtures)
 
     def delete_ownerships(self, transaction):
         ownerships = FixtureOwnership.by_item_id(self.get_id, self.domain)
